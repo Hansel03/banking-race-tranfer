@@ -12,6 +12,8 @@ import {
   SPAWN_COIN_INTERVAL,
   COLLISION_DIST_RIVAL,
   COLLISION_DIST_COIN,
+  COLLISION_Z_MIN,
+  COLLISION_Z_MAX,
   ROAD_BOUND,
   PLAYER_BOUNDS,
 } from '../../constants/game'
@@ -139,7 +141,7 @@ export function GameCanvas({ onGameOver, gameKey }: GameProps) {
         // Mover rivales
         gs.rivals = gs.rivals
           .map(r => ({ ...r, z: r.z + RIVAL_SPEED * dt }))
-          .filter(r => r.z < 1.15)
+          .filter(r => r.z < 1.25) // Mayor rango para permitir colisión
 
         // Spawnear monedas
         if (gs.frameCount % SPAWN_COIN_INTERVAL === 0 && gs.coins.length < MAX_COINS) {
@@ -153,18 +155,18 @@ export function GameCanvas({ onGameOver, gameKey }: GameProps) {
         // Mover monedas
         gs.coins = gs.coins
           .map(c => ({ ...c, z: c.z + COIN_SPEED * dt }))
-          .filter(c => c.z < 1.05)
+          .filter(c => c.z < 1.15) // Mayor rango para permitir colisión
 
-        // Recolectar monedas
+        // Recolectar monedas - rango más amplio
         const toRemove: number[] = []
         gs.coins.forEach(coin => {
-          if (coin.z > 0.88 && coin.z < 1.0) {
+          if (coin.z >= COLLISION_Z_MIN && coin.z <= COLLISION_Z_MAX) {
             const dist = Math.abs(coin.lane - gs.playerX)
             if (dist < COLLISION_DIST_COIN) {
               gs.money += 100
               playCoin()
-              const screenX = roadXAt(coin.lane, 0.9)
-              const screenY = roadYAt(0.9)
+              const screenX = roadXAt(coin.lane, 0.95)
+              const screenY = roadYAt(0.95)
               gs.floats.push({
                 id:    gs.nextFloatId++,
                 x:     screenX,
@@ -183,9 +185,9 @@ export function GameCanvas({ onGameOver, gameKey }: GameProps) {
           .map(ft => ({ ...ft, y: ft.y - 1.2 * dt, alpha: ft.alpha - 0.025 * dt }))
           .filter(ft => ft.alpha > 0)
 
-        // Colisión con rivales
+        // Colisión con rivales - rango más amplio
         for (const rival of gs.rivals) {
-          if (rival.z > 0.85 && rival.z < 1.08) {
+          if (rival.z >= COLLISION_Z_MIN && rival.z <= COLLISION_Z_MAX) {
             const dist = Math.abs(rival.lane - gs.playerX)
             if (dist < COLLISION_DIST_RIVAL) {
               gs.phase    = 'crashed'

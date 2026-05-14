@@ -167,19 +167,37 @@ function drawCoins(ctx: CanvasRenderingContext2D, gs: GameState): void {
   gs.coins.forEach(coin => {
     const z = coin.z
     if (z < 0.05) return
+
     const cx = roadXAt(coin.lane * 0.45, z)
     const cy = roadYAt(z)
-    const size = Math.max(4, 12 * z)
+    const size = Math.max(6, 18 * z) // Más grandes: 18 en lugar de 12
     const even = gs.frameCount % 2 === 0
-    ctx.fillStyle = even ? C.warning600 : C.warning100
-    ctx.fillRect(cx - size / 2, cy - size / 2, size, size)
-    if (size > 6) {
-      ctx.fillStyle = even ? C.warning100 : C.warning600
-      ctx.font = `${Math.floor(size * 0.5)}px 'Press Start 2P', monospace`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('$', cx, cy)
-    }
+    const innerSize = size * 0.85
+
+    // Borde exterior de la moneda (sombra/borde)
+    ctx.fillStyle = even ? C.warning600 : C.grey700
+    ctx.beginPath()
+    ctx.arc(cx, cy, size / 2, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Color dorado principal
+    ctx.fillStyle = even ? '#ffd700' : C.warning600
+    ctx.beginPath()
+    ctx.arc(cx, cy, innerSize / 2, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Brillo interior
+    ctx.fillStyle = even ? C.warning100 : '#ffcc44'
+    ctx.beginPath()
+    ctx.arc(cx - size * 0.1, cy - size * 0.1, innerSize * 0.35, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Símbolo $ en el centro
+    ctx.fillStyle = even ? C.warning600 : '#ffd700'
+    ctx.font = `${Math.floor(size * 0.45)}px 'Press Start 2P', monospace`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('$', cx, cy + 1)
   })
 }
 
