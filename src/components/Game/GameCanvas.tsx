@@ -12,8 +12,6 @@ import {
   SPAWN_COIN_INTERVAL,
   COLLISION_DIST_RIVAL,
   COLLISION_DIST_COIN,
-  COLLISION_Z_MIN,
-  COLLISION_Z_MAX,
   ROAD_BOUND,
   PLAYER_BOUNDS,
 } from '../../constants/game'
@@ -21,6 +19,9 @@ import { roadXAt, roadYAt } from '../../utils/geometry'
 import { playCoin, playCrash } from '../../utils/audio'
 import { drawFrame } from '../../utils/drawing'
 import { C } from '../../constants/colors'
+
+// El jugador siempre está en z=1 (frente del canvas)
+const PLAYER_Z = 1.0
 
 function makeInitialGS(): GameState {
   return {
@@ -43,6 +44,12 @@ function makeInitialGS(): GameState {
     nextFloatId: 0,
     keysDown:    new Set(),
   }
+}
+
+// Detecta si un objeto cruzó la Z del jugador entre el frame anterior y el actual.
+// Esto evita el "tunneling" cuando el paso de frame es grande.
+function crossedPlayerZ(prevZ: number, currZ: number): boolean {
+  return prevZ < PLAYER_Z && currZ >= PLAYER_Z
 }
 
 const canvasStyle: React.CSSProperties = {
@@ -93,7 +100,7 @@ export function GameCanvas({ onGameOver, gameKey }: GameProps) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let lastTime = 0
+    let lastTime = performance.now()
 
     const tick = (now: number) => {
       const gs = gsRef.current
@@ -138,10 +145,12 @@ export function GameCanvas({ onGameOver, gameKey }: GameProps) {
           })
         }
 
-        // Mover rivales
-        gs.rivals = gs.rivals
-          .map(r => ({ ...r, z: r.z + RIVAL_SPEED * dt }))
-          .filter(r => r.z < 1.25) // Mayor rango para permitir colisión
+        // Mover rivales — guardamos prevZ para detectar tunneling
+        const movedRivals = gs.rivals.map(r => ({
+          ...r,
+          prevZ: r.z,
+          z: r.z + RIVAL_SPEED * dt,
+        }))
 
         // Spawnear monedas
         if (gs.frameCount % SPAWN_COIN_INTERVAL === 0 && gs.coins.length < MAX_COINS) {
@@ -152,53 +161,55 @@ export function GameCanvas({ onGameOver, gameKey }: GameProps) {
           })
         }
 
-        // Mover monedas
-        gs.coins = gs.coins
-          .map(c => ({ ...c, z: c.z + COIN_SPEED * dt }))
-          .filter(c => c.z < 1.15) // Mayor rango para permitir colisión
+        // Mover monedas — guardamos prevZ para detectar tunneling
+        const movedCoins = gs.coins.map(c => ({
+          ...c,
+          prevZ: c.z,
+          z: c.z + COIN_SPEED * dt,
+        }))
 
-        // Recolectar monedas - rango más amplio
-        const toRemove: number[] = []
-        gs.coins.forEach(coin => {
-          if (coin.z >= COLLISION_Z_MIN && coin.z <= COLLISION_Z_MAX) {
-            const dist = Math.abs(coin.lane - gs.playerX)
-            if (dist < COLLISION_DIST_COIN) {
-              gs.money += 100
-              playCoin()
-              const screenX = roadXAt(coin.lane, 0.95)
-              const screenY = roadYAt(0.95)
-              gs.floats.push({
-                id:    gs.nextFloatId++,
-                x:     screenX,
-                y:     screenY,
-                alpha: 1,
-                text:  '+$100',
-              })
-              toRemove.push(coin.id)
-            }
+        // ── Colisión con rivales ──────────────────────────────────────────
+        // Un rival choca si cruzó la Z del jugador Y está en el mismo carril
+        for (const rival of movedRivals) {
+          const crossed = crossedPlayerZ(rival.prevZ ?? rival.z - RIVAL_SPEED * dt, rival.z)
+          const close   = Math.abs(rival.lane - gs.playerX) < COLLISION_DIST_RIVAL
+          if (crossed && close) {
+            gs.phase    = 'crashed'
+            gs.crashMsg = '¡CHOQUE!'
+            gs.shakeEnd = now + 400
+            playCrash()
+            onGameOver(gs.money)
+            return
           }
-        })
-        gs.coins = gs.coins.filter(c => !toRemove.includes(c.id))
+        }
+
+        // ── Recolección de monedas ────────────────────────────────────────
+        const toRemove: number[] = []
+        for (const coin of movedCoins) {
+          const crossed = crossedPlayerZ(coin.prevZ ?? coin.z - COIN_SPEED * dt, coin.z)
+          const close   = Math.abs(coin.lane * 0.45 - gs.playerX) < COLLISION_DIST_COIN
+          if (crossed && close) {
+            gs.money += 100
+            playCoin()
+            gs.floats.push({
+              id:    gs.nextFloatId++,
+              x:     roadXAt(coin.lane, 0.92),
+              y:     roadYAt(0.92),
+              alpha: 1,
+              text:  '+$100',
+            })
+            toRemove.push(coin.id)
+          }
+        }
+
+        // Actualizar listas limpias
+        gs.rivals = movedRivals.filter(r => r.z < 1.3)
+        gs.coins  = movedCoins.filter(c => c.z < 1.3 && !toRemove.includes(c.id))
 
         // Animar textos flotantes
         gs.floats = gs.floats
           .map(ft => ({ ...ft, y: ft.y - 1.2 * dt, alpha: ft.alpha - 0.025 * dt }))
           .filter(ft => ft.alpha > 0)
-
-        // Colisión con rivales - rango más amplio
-        for (const rival of gs.rivals) {
-          if (rival.z >= COLLISION_Z_MIN && rival.z <= COLLISION_Z_MAX) {
-            const dist = Math.abs(rival.lane - gs.playerX)
-            if (dist < COLLISION_DIST_RIVAL) {
-              gs.phase    = 'crashed'
-              gs.crashMsg = '¡CHOQUE!'
-              gs.shakeEnd = now + 400
-              playCrash()
-              onGameOver(gs.money)
-              return
-            }
-          }
-        }
       }
 
       // Calcular shake

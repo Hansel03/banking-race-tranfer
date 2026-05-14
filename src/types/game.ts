@@ -3,17 +3,19 @@
 export type GamePhase = 'idle' | 'playing' | 'crashed' | 'done'
 
 export interface Rival {
-  id:    number
-  lane:  number   // -1, 0, 1
-  z:     number   // 0=horizonte, 1=frente del jugador
-  color: string
-  label: number
+  id:     number
+  lane:   number
+  z:      number
+  prevZ?: number  // Z del frame anterior — para detección anti-tunneling
+  color:  string
+  label:  number
 }
 
 export interface Coin {
-  id:    number
-  lane:  number
-  z:     number
+  id:     number
+  lane:   number
+  z:      number
+  prevZ?: number  // Z del frame anterior — para detección anti-tunneling
 }
 
 export interface FloatText {

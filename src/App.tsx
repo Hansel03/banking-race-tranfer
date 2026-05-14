@@ -13,7 +13,6 @@ export default function App() {
   const [gameKey, setGameKey] = useState(0);
 
   const handleGameOver = useCallback((money: number) => {
-    console.log("GAME OVER callback", money);
     setFinalMonto(money);
   }, []);
 
@@ -195,7 +194,6 @@ export default function App() {
 
         <button
           onClick={() => {
-            console.log("CLICK TRANSFER", { finalMonto, canTransfer, sameAccount });
             if (finalMonto > 0 && !sameAccount) {
               setTransferred(true);
             }

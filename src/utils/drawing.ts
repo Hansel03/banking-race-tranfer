@@ -205,7 +205,7 @@ function drawCoins(ctx: CanvasRenderingContext2D, gs: GameState): void {
 function drawRivals(ctx: CanvasRenderingContext2D, gs: GameState): void {
   gs.rivals.forEach(rival => {
     const z = rival.z
-    if (z < 0.08) return
+    if (z < 0.05) return
     const cx = roadXAt(rival.lane * 0.42, z)
     const cy = roadYAt(z)
     const scale = z

@@ -17,11 +17,9 @@ export const RIVAL_SPEED = 0.011
 export const COIN_SPEED = 0.016
 export const PLAYER_SPEED = 0.022
 
-// Parámetros de colisión
-export const COLLISION_DIST_RIVAL = 0.32  // Un poco más amplio
-export const COLLISION_DIST_COIN = 0.28   // Un poco más amplio
-export const COLLISION_Z_MIN = 0.82        // Inicio más temprano
-export const COLLISION_Z_MAX = 1.15        // Hasta que pase completamente
+// Parámetros de colisión — la detección usa crossedPlayerZ (anti-tunneling)
+export const COLLISION_DIST_RIVAL = 0.32
+export const COLLISION_DIST_COIN  = 0.28
 export const ROAD_BOUND = 0.88
 export const PLAYER_BOUNDS = { min: -0.92, max: 0.92 }
 
